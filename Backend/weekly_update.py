@@ -5,11 +5,13 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from typing import Dict, Any
+import logging
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
 # Initialize Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Initialize Supabase
 url: str = os.getenv("SUPABASE_URL")
