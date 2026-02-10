@@ -1,6 +1,6 @@
 import os
 import json
-from google import generativeai as genai
+import google.generativeai as genai
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
@@ -24,7 +24,7 @@ def get_hyderabad_college_events():
     """Use Google Search Grounding to find college events in Hyderabad"""
     model = genai.GenerativeModel(
         model_name="models/gemini-1.5-flash",
-        tools=[genai.tools.Tool(
+        tools=[genai.types.Tool(
             function_declarations=[
                 genai.types.FunctionDeclaration(
                     name="search_college_events",
@@ -32,7 +32,10 @@ def get_hyderabad_college_events():
                     parameters={
                         "type": "object",
                         "properties": {
-                            "query": {"type": "string", "description": "Search query for college events"}
+                            "query": {
+                                "type": "string", 
+                                "description": "Search query for college events"
+                            }
                         }
                     }
                 )
