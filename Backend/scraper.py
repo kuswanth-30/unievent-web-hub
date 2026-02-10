@@ -45,7 +45,7 @@ def scrape_and_insert_events(college: str, target_url: str = None):
             search_query = f"{college} events page"
             print(f"� Searching for: {search_query}")
             
-            search_result = firecrawl_app.search(search_query, params={"limit": 3})
+            search_result = firecrawl_app.search(search_query, limit=3)
             
             if not search_result.success or not search_result.data:
                 return {"success": False, "error": f"No events page found for '{college}'"}

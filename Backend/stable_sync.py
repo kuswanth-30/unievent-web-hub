@@ -1,11 +1,21 @@
 import os
 import json
 import requests
+from supabase import create_client, Client
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from typing import Dict, Any
 
 load_dotenv()
+
+# Initialize Supabase
+url: str = os.getenv("SUPABASE_URL")
+key: str = os.getenv("SUPABASE_KEY")
+
+if not url or not key:
+    raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY in environment")
+
+supabase: Client = create_client(url, key)
 
 def get_hyderabad_college_events():
     """Use Gemini API via direct REST requests to find college events in Hyderabad"""
@@ -18,11 +28,12 @@ def get_hyderabad_college_events():
     next_week = today + timedelta(days=7)
     date_range = f"{today.strftime('%B %d')} to {next_week.strftime('%B %d, %Y')}"
     
-    # Gemini API endpoint with API key in URL
-    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    # Gemini API endpoint
+    gemini_url = "https://generativelanguage.googleapis.com/v1/models/text-bison-001:generateContent"
     
     headers = {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "x-goog-api-key": api_key
     }
     
     prompt = f"""
@@ -78,13 +89,7 @@ def get_hyderabad_college_events():
         raise Exception(f"Failed to parse Gemini response: {str(e)}")
 
 def insert_events_to_supabase(events_data):
-    """Insert events into Supabase using direct REST requests"""
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
-    
-    if not supabase_url or not supabase_key:
-        raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY in environment")
-    
+    """Insert events into Supabase with fallback category"""
     try:
         # Parse JSON from response
         events = json.loads(events_data)
@@ -102,18 +107,7 @@ def insert_events_to_supabase(events_data):
                     "link": event.get("link", "")
                 }
                 
-                # Direct POST request to Supabase REST API
-                events_url = f"{supabase_url}/rest/v1/events"
-                headers = {
-                    "apikey": supabase_key,
-                    "Authorization": f"Bearer {supabase_key}",
-                    "Content-Type": "application/json",
-                    "Prefer": "return=minimal"
-                }
-                
-                response = requests.post(events_url, headers=headers, json=event_data)
-                response.raise_for_status()
-                
+                response = supabase.table("events").insert(event_data).execute()
                 inserted_count += 1
                 print(f"Inserted event: {event_data['title']}")
                 
