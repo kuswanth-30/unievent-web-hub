@@ -1,0 +1,23 @@
+# Web Framework & Server
+fastapi==0.115.0
+uvicorn==0.30.0
+
+# Database
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+pydantic==2.9.2
+supabase==2.10.0
+firecrawl-py==1.2.0
+
+# Scraping & Automation
+playwright==1.49.0
+beautifulsoup4==4.12.3
+requests==2.32.3
+
+# AI Integration
+google-generativeai==0.8.3
+google-genai==0.3.0
+
+# Utils
+python-dotenv==1.0.1
+python-multipart==0.0.6
