@@ -1,6 +1,6 @@
 import os
 import json
-import google.generativeai as genai
+from google import genai
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
@@ -23,24 +23,22 @@ supabase: Client = create_client(url, key)
 def get_hyderabad_college_events():
     """Use Google Search Grounding to find college events in Hyderabad"""
     model = genai.GenerativeModel(
-        model_name="models/gemini-1.5-flash",
-        tools=[genai.types.Tool(
-            function_declarations=[
-                genai.types.FunctionDeclaration(
-                    name="search_college_events",
-                    description="Search for college events in Hyderabad for next week",
-                    parameters={
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string", 
-                                "description": "Search query for college events"
-                            }
+        model_name="gemini-1.5-flash",
+        tools=[
+            genai.types.Tool(
+                name="search_college_events",
+                description="Search for college events in Hyderabad for next week",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string", 
+                            "description": "Search query for college events"
                         }
                     }
-                )
-            ]
-        )]
+                }
+            )
+        ]
     )
     
     # Calculate date range for next week
