@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 # Initialize Gemini
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"), http_options={'api_version': 'v1'})
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Initialize Supabase
 url: str = os.getenv("SUPABASE_URL")
@@ -25,7 +25,7 @@ supabase: Client = create_client(url, key)
 def get_hyderabad_college_events():
     """Use Google Search Grounding to find college events in Hyderabad"""
     model = client.models.generate_content(
-        model="gemini-1.5-flash",
+        model='gemini-1.5-flash',
         contents=[
             genai.types.Content(
                 parts=[
