@@ -63,6 +63,14 @@ def get_hyderabad_college_events():
     """
     
     response = model.generate_content(prompt)
+    
+    # Debug: Print search queries performed by model
+    if hasattr(response, 'candidates') and response.candidates:
+        for candidate in response.candidates:
+            if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+                web_search_queries = candidate.grounding_metadata.get('web_search_queries', [])
+                print(f"🔍 Search Queries: {web_search_queries}")
+    
     return response.text
 
 def insert_events_to_supabase(events_data):
