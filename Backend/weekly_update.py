@@ -24,57 +24,40 @@ supabase: Client = create_client(url, key)
 
 def get_hyderabad_college_events():
     """Use Google Search Grounding to find college events in Hyderabad"""
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        tools=[
-            genai.types.Tool(
-                name="search_college_events",
-                description="Search for college events in Hyderabad for next week",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string", 
-                            "description": "Search query for college events"
-                        }
-                    }
-                }
+    model = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=[
+            genai.types.Content(
+                parts=[
+                    genai.types.Part.from_text(
+                        text=f"""
+                        You are a search assistant. Find all college events, fests, and workshops happening in Hyderabad from {datetime.now().strftime('%B %d')} to {(datetime.now() + timedelta(days=7)).strftime('%B %d, %Y')}.
+                        Search for events at colleges like CBIT, MGIT, VNRVJIET, JNTU, OU, etc.
+                        
+                        Return results as JSON with this format:
+                        [
+                            {{
+                                "title": "Event Name",
+                                "college_name": "College Name", 
+                                "category": "Technical" or "Cultural" or "Workshop",
+                                "date": "YYYY-MM-DD",
+                                "description": "Brief description",
+                                "link": "URL if available"
+                            }}
+                        ]
+                        """
+                    )
+                ]
             )
         ]
     )
     
-    # Calculate date range for next week
-    today = datetime.now()
-    next_week = today + timedelta(days=7)
-    date_range = f"{today.strftime('%B %d')} to {next_week.strftime('%B %d, %Y')}"
-    
-    prompt = f"""
-    Find all college events, fests, and workshops happening in Hyderabad from {date_range}.
-    Search for events at colleges like CBIT, MGIT, VNRVJIET, JNTU, OU, etc.
-    
-    Return results as JSON with this format:
-    [
-        {{
-            "title": "Event Name",
-            "college_name": "College Name", 
-            "category": "Technical" or "Cultural" or "Workshop",
-            "date": "YYYY-MM-DD",
-            "description": "Brief description",
-            "link": "URL if available"
-        }}
-    ]
-    """
-    
-    response = model.generate_content(prompt)
+    response = model.candidates[0].content.parts[0].text
     
     # Debug: Print search queries performed by model
-    if hasattr(response, 'candidates') and response.candidates:
-        for candidate in response.candidates:
-            if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
-                web_search_queries = candidate.grounding_metadata.get('web_search_queries', [])
-                print(f"🔍 Search Queries: {web_search_queries}")
+    print(f"🔍 Searching for Hyderabad college events...")
     
-    return response.text
+    return response
 
 def insert_events_to_supabase(events_data):
     """Insert events into Supabase with fallback category"""
