@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* Electric Violet theme – semantic colors for Tailwind v4 */
+@theme {
+  /* Core */
+  --color-background: hsl(240 10% 4%);
+  --color-foreground: hsl(240 6% 90%);
+  --color-card: hsl(240 8% 8%);
+  --color-card-foreground: hsl(240 6% 90%);
+  --color-popover: hsl(240 8% 8%);
+  --color-popover-foreground: hsl(240 6% 90%);
+  /* Electric Violet primary & accent */
+  --color-primary: #8b5cf6;
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(240 6% 14%);
+  --color-secondary-foreground: hsl(240 6% 90%);
+  --color-muted: hsl(240 6% 14%);
+  --color-muted-foreground: hsl(240 6% 55%);
+  --color-accent: #8b5cf6;
+  --color-accent-foreground: hsl(0 0% 100%);
+  --color-destructive: hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-border: hsl(240 6% 18%);
+  --color-input: hsl(240 6% 18%);
+  --color-ring: #8b5cf6;
+  /* Charts */
+  --color-chart-1: #8b5cf6;
+  --color-chart-2: hsl(280 65% 60%);
+  --color-chart-3: hsl(220 70% 50%);
+  --color-chart-4: hsl(340 75% 55%);
+  --color-chart-5: hsl(160 60% 45%);
+  /* Radius */
+  --radius: 0.75rem;
+  /* Sidebar */
+  --color-sidebar-background: hsl(240 10% 6%);
+  --color-sidebar-foreground: hsl(240 6% 90%);
+  --color-sidebar-primary: #8b5cf6;
+  --color-sidebar-primary-foreground: hsl(0 0% 100%);
+  --color-sidebar-accent: hsl(240 6% 14%);
+  --color-sidebar-accent-foreground: hsl(240 6% 90%);
+  --color-sidebar-border: hsl(240 6% 18%);
+  --color-sidebar-ring: #8b5cf6;
+  /* Fonts – layout sets --font-inter and --font-space-grotesk on body */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
