@@ -26,7 +26,6 @@ def get_hyderabad_college_events():
     """Use Google Search Grounding to find college events in Hyderabad"""
     model = client.models.generate_content(
         model="gemini-1.5-flash",
-        version="v1",
         contents=[
             genai.types.Content(
                 parts=[
