@@ -379,3 +379,6 @@ if __name__ == "__main__":
     import uvicorn
     # Listening on 0.0.0.0 makes it accessible on your local network
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# Vercel handler
+handler = app
