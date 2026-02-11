@@ -115,22 +115,10 @@ const ChartTooltipContent = React.forwardRef<
     }
 >(
   (
-    {
-      active,
-      payload,
-      className,
-      indicator = 'dot',
-      hideLabel = false,
-      hideIndicator = false,
-      labelFormatter,
-      labelClassName,
-      formatter,
-      color,
-      nameKey,
-      labelKey,
-    },
-    ref,
+    props: any,
+    ref: React.Ref<HTMLDivElement>
   ) => {
+      const { active, payload, className, indicator = 'dot', hideLabel = false, hideIndicator = false, labelFormatter, labelClassName, formatter, color, nameKey, labelKey } = props;
     const { config } = useChart()
 
     const tooltipLabel = React.useMemo(() => {
@@ -149,7 +137,7 @@ const ChartTooltipContent = React.forwardRef<
       if (labelFormatter) {
         return (
           <div className={cn('font-medium', labelClassName)}>
-            {labelFormatter(value, payload)}
+            {labelFormatter(item.value, item.name, item, item.payload)}
           </div>
         )
       }
