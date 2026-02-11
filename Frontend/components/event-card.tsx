@@ -2,58 +2,56 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { CalendarDays, MapPin, School, Users } from "lucide-react";
+import { CalendarDays, MapPin, School, Users, ExternalLink, CalendarPlus, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { CollegeEvent } from "@/lib/events-data";
 
-// 1. Define the interface to match your Supabase columns exactly
-interface Event {
-  id: number;
-  title: string;
-  college_name: string;
-  category: string;
-  description: string;
-  date: string;
+interface CollegeEventWithDate extends CollegeEvent {
+  event_date?: string;
+  registration_url?: string;
 }
 
 interface EventCardProps {
-  event: Event; // Use the new interface here
+  event: CollegeEventWithDate;
 }
 
 const categoryColors: Record<string, string> = {
+  Technical: "bg-primary/20 text-primary border-primary/30",
+  Cultural: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  Sports: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   Hackathon: "bg-primary/20 text-primary border-primary/30",
-  Workshop: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   Fest: "bg-amber-500/20 text-amber-400 border-amber-500/30",
   Seminar: "bg-sky-500/20 text-sky-400 border-sky-500/30",
-  Competition: "bg-rose-500/20 text-rose-400 border-rose-500/30",
 };
 
 export function EventCard({ event }: EventCardProps) {
   const [registered, setRegistered] = useState(false);
 
   // Safe date formatting
-  const formattedDate = event.date ? new Date(event.date).toLocaleDateString("en-US", {
+  const formattedDate = event.event_date || event.date ? new Date(event.event_date || event.date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   }) : "Date TBD";
 
+  const handleRegisterClick = () => {
+    if (event.registration_url) {
+      window.open(event.registration_url, '_blank');
+    }
+  };
+
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-xl border border-border/50 bg-card/40 backdrop-blur-xl transition-all duration-300 hover:scale-[1.03] hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-4 flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-primary/30 bg-primary/10">
-              <School className="h-5 w-5 text-primary" />
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <School className="h-4 w-4 text-white" />
             </div>
-            <div>
-              {/* 2. Changed event.college to event.college_name */}
-              <p className="text-xs font-medium text-muted-foreground">
-                {event.college_name}
-              </p>
-              <p className="flex items-center gap-1 text-xs text-muted-foreground/70">
-                <MapPin className="h-3 w-3" />
-                Hyderabad, TS
+            <div className="flex flex-col">
+              <p className="text-base font-semibold text-white leading-tight font-mono">
+                {event.college || "College Name"}
               </p>
             </div>
           </div>
@@ -62,36 +60,41 @@ export function EventCard({ event }: EventCardProps) {
           </Badge>
         </div>
 
-        <h3 className="mb-2 font-heading text-lg font-semibold leading-tight text-foreground">
+        <h3 className="mb-3 font-mono text-xl font-bold leading-tight text-foreground text-balance tracking-wide">
           {event.title}
         </h3>
 
-        <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+        <p className="mb-6 line-clamp-3 text-sm leading-relaxed text-muted-foreground/80 font-mono">
           {event.description}
         </p>
 
-        <div className="mt-auto mb-4 flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <CalendarDays className="h-3.5 w-3.5" />
+        <div className="mt-auto mb-6 flex items-center gap-6 text-sm text-muted-foreground/70">
+          <span className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
             {formattedDate}
           </span>
-          <span className="flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" />
-            Live data
+          <span className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            {Math.floor(Math.random() * 500) + 200} attending
           </span>
         </div>
 
-        <Button
-          className={`w-full rounded-full transition-all duration-200 ${
-            registered
-              ? "border border-[#8b5cf6]/30 bg-[#8b5cf6]/15 text-[#8b5cf6] hover:bg-[#8b5cf6]/20"
-              : "bg-[#8b5cf6] text-white hover:bg-[#7c3aed]"
-          }`}
-          onClick={() => setRegistered(!registered)}
-          variant={registered ? "outline" : "default"}
-        >
-          {registered ? "Registered" : "Register"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            className={`flex-1 rounded-full transition-all duration-200 ${
+              registered
+                ? "border border-[#8b5cf6]/30 bg-[#8b5cf6]/15 text-[#8b5cf6] hover:bg-[#8b5cf6]/20"
+                : "bg-[#8b5cf6] text-white hover:bg-[#7c3aed]"
+            }`}
+            onClick={handleRegisterClick}
+            disabled={!event.registration_url}
+            variant={registered ? "outline" : "default"}
+            size="sm"
+          >
+            <ExternalLink className="h-3 w-3 mr-1" />
+            {event.registration_url ? "Register Now" : "No Link"}
+          </Button>
+        </div>
       </div>
     </article>
   );

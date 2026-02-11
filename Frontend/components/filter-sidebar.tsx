@@ -1,7 +1,7 @@
 "use client";
 
-import { Calendar, GraduationCap, LayoutGrid, X } from "lucide-react";
-import { categories, colleges, type EventCategory } from "@/lib/events-data";
+import { Calendar, GraduationCap, LayoutGrid, X, MapPin } from "lucide-react";
+import { categories, colleges, regions, capitalCities, type EventCategory } from "@/lib/events-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -13,6 +13,8 @@ interface FilterSidebarProps {
   onCollegeChange: (college: string) => void;
   selectedDate: string;
   onDateChange: (date: string) => void;
+  selectedRegion: string;
+  onRegionChange: (region: string) => void;
   onClearAll: () => void;
   activeFilterCount: number;
 }
@@ -24,6 +26,8 @@ export function FilterSidebar({
   onCollegeChange,
   selectedDate,
   onDateChange,
+  selectedRegion,
+  onRegionChange,
   onClearAll,
   activeFilterCount,
 }: FilterSidebarProps) {
@@ -107,18 +111,58 @@ export function FilterSidebar({
         <div className="mb-7">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <GraduationCap className="h-4 w-4" />
-            <span>College</span>
+            <span>College Type</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onCollegeChange("IIT")}
+              className={`px-3 py-2 rounded-md border transition-colors text-sm font-medium ${
+                selectedCollege === "IIT"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-secondary/50 border-border text-muted-foreground hover:bg-secondary/70"
+              }`}
+            >
+              IIT
+            </button>
+            <button
+              onClick={() => onCollegeChange("NIT")}
+              className={`px-3 py-2 rounded-md border transition-colors text-sm font-medium ${
+                selectedCollege === "NIT"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-secondary/50 border-border text-muted-foreground hover:bg-secondary/70"
+              }`}
+            >
+              NIT
+            </button>
+            <button
+              onClick={() => onCollegeChange("Others")}
+              className={`px-3 py-2 rounded-md border transition-colors text-sm font-medium ${
+                selectedCollege === "Others"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-secondary/50 border-border text-muted-foreground hover:bg-secondary/70"
+              }`}
+            >
+              Others
+            </button>
+          </div>
+        </div>
+
+        {/* Region Filter */}
+        <div className="mb-7">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <MapPin className="h-4 w-4" />
+            <span>State/Region</span>
           </div>
           <select
-            value={selectedCollege}
-            onChange={(e) => onCollegeChange(e.target.value)}
+            value={selectedRegion}
+            onChange={(e) => onRegionChange(e.target.value)}
             className="w-full rounded-md border border-border bg-secondary/50 px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-            aria-label="Select college"
+            aria-label="Select region"
           >
-            <option value="">All Colleges</option>
-            {colleges.map((college) => (
-              <option key={college} value={college}>
-                {college}
+            <option value="">All States</option>
+            {regions.map((region) => (
+              <option key={region} value={region}>
+                {region} - {capitalCities[region as keyof typeof capitalCities]}
               </option>
             ))}
           </select>

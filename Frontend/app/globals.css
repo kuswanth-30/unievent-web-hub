@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Electric Violet theme – semantic colors for Tailwind v4 */
+/* Beautiful Formal Sans Theme – Clean typography for UniEvent */
 @theme {
   /* Core */
   --color-background: hsl(240 10% 4%);
@@ -40,9 +40,9 @@
   --color-sidebar-accent-foreground: hsl(240 6% 90%);
   --color-sidebar-border: hsl(240 6% 18%);
   --color-sidebar-ring: #8b5cf6;
-  /* Fonts – layout sets --font-inter and --font-space-grotesk on body */
+  /* Beautiful Formal Sans Font – Inter throughout */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -51,6 +51,7 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 

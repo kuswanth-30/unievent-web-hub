@@ -19,6 +19,8 @@ interface MobileFilterSheetProps {
   onCollegeChange: (college: string) => void;
   selectedDate: string;
   onDateChange: (date: string) => void;
+  selectedRegion: string;
+  onRegionChange: (region: string) => void;
   onClearAll: () => void;
   activeFilterCount: number;
 }

@@ -1,8 +1,9 @@
 import os
+import json
+import requests
 from firecrawl import FirecrawlApp
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
-from supabase import create_client, Client
 from typing import Dict, Any
 
 load_dotenv()
@@ -10,14 +11,12 @@ load_dotenv()
 # Initialize Firecrawl
 firecrawl_app = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
 
-# Initialize Supabase client
-url: str = os.getenv("SUPABASE_URL")
-key: str = os.getenv("SUPABASE_KEY")
+# Initialize Supabase
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_KEY")
 
-if not url or not key:
+if not supabase_url or not supabase_key:
     raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY in environment")
-
-supabase: Client = create_client(url, key)
 
 # Define Event Schema matching main.py with flexible date handling
 class EventSchema(BaseModel):
@@ -43,7 +42,7 @@ def scrape_and_insert_events(college: str, target_url: str = None):
         # If no target_url provided, search for the most content-rich events page
         if not target_url:
             search_query = f"{college} events page"
-            print(f"� Searching for: {search_query}")
+            print(f"Searching for: {search_query}")
             
             search_result = firecrawl_app.search(search_query, limit=3)
             
@@ -55,9 +54,9 @@ def scrape_and_insert_events(college: str, target_url: str = None):
             if not target_url:
                 return {"success": False, "error": f"No valid URL found for '{college}' events page"}
             
-            print(f"🎯 Found events page: {target_url}")
+            print(f"Found events page: {target_url}")
         
-        print(f"� Firecrawl is extracting events from {target_url}...")
+        print(f"Firecrawl is extracting events from {target_url}...")
         
         # Use the /extract endpoint with wait_for parameter and updated schema
         scrape_result = firecrawl_app.extract(
@@ -75,7 +74,7 @@ def scrape_and_insert_events(college: str, target_url: str = None):
         if not scraped_events:
             return {"success": True, "count": 0, "message": "No events found"}
         
-        # Automatically insert scraped events into Supabase
+        # Automatically insert scraped events into Supabase using direct REST
         inserted_count = 0
         for event in scraped_events:
             try:
@@ -89,12 +88,23 @@ def scrape_and_insert_events(college: str, target_url: str = None):
                     "link": event.get("link", "")
                 }
                 
-                response = supabase.table("events").insert(event_data).execute()
+                # Direct POST request to Supabase REST API
+                events_url = f"{supabase_url}/rest/v1/events"
+                headers = {
+                    "apikey": supabase_key,
+                    "Authorization": f"Bearer {supabase_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                }
+                
+                response = requests.post(events_url, headers=headers, json=event_data)
+                response.raise_for_status()
+                
                 inserted_count += 1
-                print(f"✅ Inserted event: {event_data['title']}")
+                print(f"Inserted event: {event_data['title']}")
                 
             except Exception as insert_error:
-                print(f"❌ Failed to insert event: {str(insert_error)}")
+                print(f"Failed to insert event: {str(insert_error)}")
                 continue
         
         return {

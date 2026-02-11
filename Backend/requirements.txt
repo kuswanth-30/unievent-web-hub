@@ -1,5 +1,22 @@
+# Web Framework & Server
+fastapi==0.115.0
+uvicorn==0.30.0
+
 # HTTP Requests
 requests==2.32.3
 
+# Database & ORM
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+
+# Data Validation
+pydantic==2.9.2
+
+# Scraping & Automation
+playwright==1.49.0
+beautifulsoup4==4.12.3
+firecrawl-py==1.2.0
+
 # Environment Variables
 python-dotenv==1.0.1
+python-multipart==0.0.6

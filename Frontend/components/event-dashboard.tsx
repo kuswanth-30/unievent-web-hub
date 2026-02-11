@@ -1,87 +1,97 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Sparkles, Search, Download } from "lucide-react";
-import { type EventCategory } from "@/lib/events-data";
+import { Sparkles, Search, Download, MessageSquare } from "lucide-react";
+import { type EventCategory, events } from "@/lib/events-data";
+import { supabase } from "@/lib/supabase";
 import { SearchBar } from "@/components/search-bar";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { EventCard } from "@/components/event-card";
 import { MobileFilterSheet } from "@/components/mobile-filter-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ReportEvent } from "@/components/report-event";
 
-interface Event {
-  id: number;
+interface CollegeEventWithDate {
+  id: string;
   title: string;
-  college_name: string;
-  category: string;
-  description: string;
+  college: string;
+  logo: string;
   date: string;
+  category: EventCategory;
+  description: string;
+  attendees: number;
+  location: string;
+  event_date?: string;
+  registration_url?: string;
 }
 
 export function EventDashboard() {
-  const [events, setEvents] = useState<Event[]>([]);
+  const [eventsList, setEventsList] = useState<CollegeEventWithDate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>([]);
   const [selectedCollege, setSelectedCollege] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
-  const [collegeName, setCollegeName] = useState("");
-  const [isScraping, setIsScraping] = useState(false);
-  const [scrapeMessage, setScrapeMessage] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   useEffect(() => {
-    refreshEvents();
+    fetchEventsFromSupabase();
   }, []);
 
-  const refreshEvents = () => {
+  const fetchEventsFromSupabase = async () => {
     setIsLoading(true);
-    fetch("http://localhost:8000/events")
-      .then((res) => res.json())
-      .then((data: Event[]) => {
-        setEvents(data);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        console.error("Database fetch failed:", err);
-        setIsLoading(false);
-      });
-  };
-
-  const handleScrapeEvents = async () => {
-    if (!collegeName || !collegeName.trim()) {
-      setScrapeMessage("Please enter a college name");
-      return;
-    }
-
-    setIsScraping(true);
-    setScrapeMessage("");
-
     try {
-      const response = await fetch(`http://localhost:8000/scrape-events?college=${encodeURIComponent(collegeName.trim())}`);
+      // Fetch from your backend API which is already connected to Supabase
+      console.log('Fetching from your backend API...');
+      
+      const response = await fetch('http://localhost:8000/events');
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP ${response.status}`);
+        throw new Error(`Backend responded with ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data || data.length === 0) {
+        console.log('No data from backend, using local data');
+        throw new Error('No data from backend');
       }
 
-      const result = await response.json();
-      setScrapeMessage(result.message || `Successfully scraped ${result.count} events`);
+      // Transform your backend data to match our interface
+      const eventsWithDates: CollegeEventWithDate[] = data.map((event: any) => ({
+        id: event.id?.toString() || Math.random().toString(),
+        title: event.title || 'Untitled Event',
+        college: event.college || event.college_name || 'Unknown College',
+        logo: event.logo || '/logos/default.jpg',
+        date: event.date || event.event_date || new Date().toISOString().split('T')[0],
+        category: event.category || 'Technical',
+        description: event.description || 'No description available.',
+        attendees: event.attendees || 0,
+        location: event.location || 'TBD',
+        event_date: event.event_date || event.date,
+        registration_url: event.registration_url
+      }));
+
+      setEventsList(eventsWithDates);
+      console.log('✅ Successfully loaded your backend data:', eventsWithDates.length, 'events');
       
-      // Refresh the events list to show newly scraped events
-      refreshEvents();
-      
-      // Clear the input after successful scraping
-      setCollegeName("");
     } catch (error) {
-      console.error("Scraping failed:", error);
-      setScrapeMessage(`Scraping failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('❌ Cannot load backend data:', (error as Error).message);
+      console.log('🔄 Falling back to local demo data...');
+      
+      // Only use local data as fallback
+      const eventsWithDates: CollegeEventWithDate[] = events.map(event => ({
+        ...event,
+        event_date: event.date,
+        registration_url: `https://example.com/register/${event.id}`
+      }));
+      setEventsList(eventsWithDates);
     } finally {
-      setIsScraping(false);
+      setIsLoading(false);
     }
   };
-
-  
 
   const handleCategoryToggle = (category: EventCategory) => {
     setSelectedCategories((prev) =>
@@ -91,39 +101,49 @@ export function EventDashboard() {
     );
   };
 
+  const handleCollegeFilter = (filterType: string) => {
+    setSelectedCollege(filterType);
+  };
+
   const handleClearAll = () => {
     setSelectedCategories([]);
     setSelectedCollege("");
     setSelectedDate("");
+    setSelectedRegion("");
     setSearch("");
   };
 
   const activeFilterCount =
     selectedCategories.length +
     (selectedCollege ? 1 : 0) +
-    (selectedDate ? 1 : 0);
+    (selectedDate ? 1 : 0) +
+    (selectedRegion ? 1 : 0);
 
   const filteredEvents = useMemo(() => {
-    return events.filter((event) => {
+    return eventsList.filter((event) => {
       const matchesSearch =
         !search ||
         event.title?.toLowerCase().includes(search.toLowerCase()) ||
-        event.college_name?.toLowerCase().includes(search.toLowerCase()) ||
+        event.college?.toLowerCase().includes(search.toLowerCase()) ||
         event.category?.toLowerCase().includes(search.toLowerCase()) ||
         event.description?.toLowerCase().includes(search.toLowerCase());
 
       const matchesCategory =
         selectedCategories.length === 0 ||
-        selectedCategories.includes(event.category as EventCategory);
+        selectedCategories.includes(event.category);
 
       const matchesCollege =
-        !selectedCollege || event.college_name === selectedCollege;
+        !selectedCollege || 
+        (selectedCollege === "Others" && !event.college?.toLowerCase().includes("iit") && !event.college?.toLowerCase().includes("iiit") && !event.college?.toLowerCase().includes("nit")) ||
+        event.college?.toLowerCase().includes(selectedCollege.toLowerCase());
 
       const matchesDate = !selectedDate || event.date === selectedDate;
 
-      return matchesSearch && matchesCategory && matchesCollege && matchesDate;
+      const matchesRegion = !selectedRegion || event.location.includes(selectedRegion);
+
+      return matchesSearch && matchesCategory && matchesCollege && matchesDate && matchesRegion;
     });
-  }, [search, selectedCategories, selectedCollege, selectedDate]);
+  }, [search, selectedCategories, selectedCollege, selectedDate, selectedRegion, eventsList]);
 
   const filterProps = {
     selectedCategories,
@@ -132,6 +152,8 @@ export function EventDashboard() {
     onCollegeChange: setSelectedCollege,
     selectedDate,
     onDateChange: setSelectedDate,
+    selectedRegion,
+    onRegionChange: setSelectedRegion,
     onClearAll: handleClearAll,
     activeFilterCount,
   };
@@ -144,117 +166,81 @@ export function EventDashboard() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1">
-        {/* Top Bar */}
-        <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-lg">
-          <div className="flex items-center gap-3 px-4 py-3 md:px-6 lg:px-8">
-            {/* Mobile filter trigger */}
-            <MobileFilterSheet {...filterProps} />
-
-            {/* Logo / Brand */}
-            <div className="mr-2 hidden items-center gap-2 sm:flex">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Sparkles className="h-4 w-4 text-primary-foreground" aria-hidden="true" />
-              </div>
-              <span className="font-heading text-lg font-bold text-foreground whitespace-nowrap">
-                UniEvent
-              </span>
+      <main className="flex-1 overflow-y-auto">
+        <header className="sticky top-0 z-10 border-b border-border bg-card/60 backdrop-blur-md">
+          <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <h1 className="font-heading text-xl font-bold text-foreground">
+                UniEvent Hub
+              </h1>
+              {activeFilterCount > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {activeFilterCount} active
+                </Badge>
+              )}
             </div>
 
-            {/* Search Bar */}
-            <SearchBar value={search} onChange={setSearch} />
-
-            {/* College Name Input */}
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="College Name"
-                value={collegeName}
-                onChange={(e) => setCollegeName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleScrapeEvents()}
-                className="h-9 w-40 rounded-md border border-border bg-secondary/50 px-3 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
-                aria-label="College name for scraping"
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              {/* Search Bar */}
+              <SearchBar
+                value={search}
+                onChange={setSearch}
+                placeholder="Search events..."
+                className="w-full sm:w-64"
               />
+
+              {/* Mobile Filter Toggle */}
+              <div className="lg:hidden">
+                <MobileFilterSheet {...filterProps} />
+              </div>
+
+              {/* Report Event Button */}
               <Button
-                onClick={handleScrapeEvents}
-                disabled={isScraping || !collegeName.trim()}
+                onClick={() => setIsReportModalOpen(true)}
+                variant="outline"
                 size="sm"
-                className="h-9 px-3 text-xs"
+                className="h-9 px-3 text-xs border-primary/30 text-primary hover:bg-primary/10"
               >
-                <Download className="h-3 w-3 mr-1" />
-                {isScraping ? "Scraping..." : "Scrape"}
+                <MessageSquare className="h-3 w-3 mr-1" />
+                Report Event
               </Button>
             </div>
           </div>
-
-          {/* Scrape Message */}
-          {scrapeMessage && (
-            <div className={`px-4 pb-2 text-xs ${scrapeMessage.includes('failed') || scrapeMessage.includes('error') ? 'text-red-500' : 'text-green-500'}`}>
-              {scrapeMessage}
-            </div>
-          )}
         </header>
 
-        {/* Content Area */}
-        <div className="px-4 py-6 md:px-6 lg:px-8">
-          {/* Results Header */}
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h1 className="font-heading text-2xl font-bold text-foreground">
-                Discover Events
-              </h1>
-              <div className="mt-1 text-sm text-muted-foreground flex items-center gap-1">
-  <span>
-    {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""} found
-  </span>
-  {activeFilterCount > 0 && (
-    <span className="flex items-center gap-1">
-      {" "}with{" "}
-      <Badge
-        variant="secondary"
-        className="bg-primary/15 text-primary text-xs px-1.5 py-0"
-      >
-        {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""}
-      </Badge>
-    </span>
-  )}
-</div> 
-            </div>
-          </div>
-
-          {/* Event Grid */}
+        <div className="p-4 lg:p-6">
           {isLoading ? (
-  <div className="flex flex-col items-center justify-center py-24 text-center">
-    {/* A simple loading spinner */}
-    <div className="mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-    <h3 className="font-heading text-lg font-semibold text-foreground">
-      Loading live events...
-    </h3>
-    <p className="mt-1 text-sm text-muted-foreground italic">
-      Fetching data from the cloud for your {filteredEvents.length} events
-    </p>
-  </div>
-) : filteredEvents.length > 0 ? (
-  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-    {filteredEvents.map((event) => (
-      <EventCard key={event.id} event={event as any} />
-    ))}
-  </div>
-) : (
-  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
-    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
-      <Sparkles className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-    </div>
-    <h3 className="font-heading text-lg font-semibold text-foreground">
-      No events found
-    </h3>
-    <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-      Try adjusting your filters or search query to discover more events.
-    </p>
-  </div>
-)}
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : filteredEvents.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredEvents.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="mb-4 rounded-full bg-secondary/50 p-3">
+                <Search className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="font-heading text-lg font-semibold text-foreground">
+                No events found
+              </h3>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                Try adjusting your filters or search query to discover more events.
+              </p>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Report Event Modal */}
+      <ReportEvent 
+        isOpen={isReportModalOpen} 
+        onClose={() => setIsReportModalOpen(false)} 
+      />
     </div>
   );
 }

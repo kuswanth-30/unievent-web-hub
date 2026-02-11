@@ -1,11 +1,13 @@
 import os
+import json
+import requests
 from fastapi import FastAPI, HTTPException
-from supabase import create_client, Client
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from firecrawl import FirecrawlApp
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv()
@@ -21,14 +23,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Supabase client
-url: str = os.getenv("SUPABASE_URL")
-key: str = os.getenv("SUPABASE_KEY")
+# Initialize Supabase
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_KEY")
 
-if not url or not key:
+if not supabase_url or not supabase_key:
     raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY in environment")
-
-supabase: Client = create_client(url, key)
 
 # Initialize Firecrawl
 firecrawl_api_key = os.getenv("FIRECRAWL_API_KEY")
@@ -74,14 +74,160 @@ def run_firecrawl_scraper(target_url: str) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+def get_hyderabad_college_events():
+    """Use Gemini API via direct REST requests to find college events in Hyderabad"""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("Missing GEMINI_API_KEY in environment")
+    
+    # Calculate date range for next week
+    today = datetime.now()
+    next_week = today + timedelta(days=7)
+    date_range = f"{today.strftime('%B %d')} to {next_week.strftime('%B %d, %Y')}"
+    
+    # Gemini API endpoint with API key in URL
+    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    prompt = f"""
+    You are a search assistant. Find all college events, fests, and workshops happening in Hyderabad from {date_range}.
+    Search for events at colleges like CBIT, MGIT, VNRVJIET, JNTU, OU, etc.
+    
+    Return results as JSON with this format:
+    [
+        {{
+            "title": "Event Name",
+            "college_name": "College Name", 
+            "category": "Technical" or "Cultural" or "Workshop",
+            "date": "YYYY-MM-DD",
+            "description": "Brief description",
+            "link": "URL if available"
+        }}
+    ]
+    """
+    
+    data = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": prompt
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 2048
+        }
+    }
+    
+    try:
+        response = requests.post(gemini_url, headers=headers, json=data)
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        # Extract the text from the response
+        if "candidates" in result and result["candidates"]:
+            content = result["candidates"][0]["content"]["parts"][0]["text"]
+            print(f"Searching for Hyderabad college events...")
+            return content
+        else:
+            raise ValueError("No content in Gemini response")
+            
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Gemini API request failed: {str(e)}")
+    except json.JSONDecodeError as e:
+        raise Exception(f"Failed to parse Gemini response: {str(e)}")
+
+def insert_events_to_supabase(events_data):
+    """Insert events into Supabase using direct REST requests"""
+    try:
+        # Parse JSON from response
+        events = json.loads(events_data)
+        inserted_count = 0
+        
+        for event in events:
+            try:
+                # Ensure the event has all required fields including category
+                event_data = {
+                    "title": event.get("title", "Untitled Event"),
+                    "college_name": event.get("college_name", "Unknown College"),
+                    "category": event.get("category", "general"),  # Prevent NULL errors
+                    "date": event.get("date", None),  # Flexible date format
+                    "description": event.get("description", ""),
+                    "link": event.get("link", "")
+                }
+                
+                # Direct POST request to Supabase REST API
+                events_url = f"{supabase_url}/rest/v1/events"
+                headers = {
+                    "apikey": supabase_key,
+                    "Authorization": f"Bearer {supabase_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                }
+                
+                response = requests.post(events_url, headers=headers, json=event_data)
+                response.raise_for_status()
+                
+                inserted_count += 1
+                print(f"Inserted event: {event_data['title']}")
+                
+            except Exception as insert_error:
+                print(f"Failed to insert event: {str(insert_error)}")
+                continue
+        
+        print(f"Successfully inserted {inserted_count} events into Supabase")
+        return inserted_count
+        
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse events JSON: {str(e)}")
+        return 0
+    except Exception as e:
+        print(f"Supabase insertion failed: {str(e)}")
+        return 0
+
+def weekly_update():
+    """Main function to run the weekly event scraping"""
+    print("Starting weekly event scraping...")
+    
+    try:
+        # Get events from Gemini
+        events_data = get_hyderabad_college_events()
+        
+        # Insert events into Supabase
+        inserted_count = insert_events_to_supabase(events_data)
+        
+        if inserted_count > 0:
+            print(f"Weekly update completed successfully! Inserted {inserted_count} events.")
+        else:
+            print("Weekly update completed but no events were inserted.")
+            
+    except Exception as e:
+        print(f"Weekly update failed: {str(e)}")
+        raise
+
 @app.get("/events")
 async def get_events():
     """
     Fetches all college events from the Supabase 'events' table.
     """
     try:
-        response = supabase.table("events").select("*").execute()
-        return response.data
+        events_url = f"{supabase_url}/rest/v1/events"
+        headers = {
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.get(events_url, headers=headers)
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -106,7 +252,7 @@ async def get_specific_college_events(college: str):
         search_query = f"{college} events page"
         print(f"🔍 Searching for: {search_query}")
         
-        search_result = firecrawl_app.search(search_query, params={"limit": 3})
+        search_result = firecrawl_app.search(search_query, limit=3)
         
         if not search_result.success or not search_result.data:
             raise HTTPException(status_code=404, detail=f"No events page found for '{college}'")
@@ -147,7 +293,17 @@ async def get_specific_college_events(college: str):
                     "link": event.get("link", "")
                 }
                 
-                response = supabase.table("events").insert(event_data).execute()
+                events_url = f"{supabase_url}/rest/v1/events"
+                headers = {
+                    "apikey": supabase_key,
+                    "Authorization": f"Bearer {supabase_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                }
+                
+                response = requests.post(events_url, headers=headers, json=event_data)
+                response.raise_for_status()
+                
                 inserted_count += 1
                 print(f"✅ Inserted event: {event_data['title']}")
                 
@@ -171,8 +327,17 @@ async def create_event(event: Dict[str, Any]):
     Create a new event in the Supabase database.
     """
     try:
-        response = supabase.table("events").insert(event).execute()
-        return response.data
+        events_url = f"{supabase_url}/rest/v1/events"
+        headers = {
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+        }
+        
+        response = requests.post(events_url, headers=headers, json=event)
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -182,8 +347,27 @@ async def delete_event(event_id: int):
     Delete an event from the Supabase database.
     """
     try:
-        response = supabase.table("events").delete().eq("id", event_id).execute()
-        return response.data
+        events_url = f"{supabase_url}/rest/v1/events"
+        headers = {
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.delete(f"{events_url}?id=eq.{event_id}", headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/weekly-update")
+async def run_weekly_update():
+    """
+    Run the weekly event scraping using Gemini API.
+    """
+    try:
+        weekly_update()
+        return {"message": "Weekly update completed successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -1,0 +1,9 @@
+# Create your .env.local file with your Supabase credentials:
+NEXT_PUBLIC_SUPABASE_URL=your_actual_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_actual_supabase_anon_key
+
+# Get these from your Supabase project:
+# 1. Go to https://supabase.com/dashboard
+# 2. Select your project
+# 3. Settings > API
+# 4. Copy the Project URL and anon public key
