@@ -17,7 +17,11 @@ app = FastAPI(title="UniEvent Backend", version="1.0.0")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], # Your React app's address
+    allow_origins=[
+        "http://localhost:3000",  # Local development
+        "https://unievent-web-hub.vercel.app",  # Vercel production
+        "https://unievent-web-hub-git-main-kuswanth-30.vercel.app"  # Vercel preview
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
